@@ -43,8 +43,13 @@ const server = spawn('npx', ['vite', 'preview', '--port', String(port), '--stric
 // The libraries a link names by URL: bib.py, with CORS as GitHub Pages sends
 // it; anything else is a 404 (with CORS too, so the IDE sees the status).
 const library = 'def gross(text):\n    return text.upper()\n'
-// Also a task's instructions (aufgabe.md), and the same 3 seconds late.
+// Also a task's instructions (aufgabe.md), and the same held back until the
+// check lets it go (slowTask): with a fixed delay (3 s) the file came before
+// the check had looked when opening the IDE took longer (P58).
 let aufgabe
+let slowTask = Promise.resolve()
+let releaseSlowTask = () => {}
+const holdSlowTask = () => { slowTask = new Promise((resolve) => { releaseSlowTask = resolve }) }
 const libraryServer = http.createServer((request, response) => {
   const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'text/plain; charset=utf-8' }
   const pathname = new URL(request.url, libraryBase).pathname
@@ -52,10 +57,10 @@ const libraryServer = http.createServer((request, response) => {
     response.writeHead(200, headers)
     response.end(library)
   } else if (pathname === '/aufgabe.md' || pathname === '/langsam/aufgabe.md') {
-    setTimeout(() => {
+    void (pathname === '/aufgabe.md' ? Promise.resolve() : slowTask).then(() => {
       response.writeHead(200, headers)
       response.end(aufgabe)
-    }, pathname === '/aufgabe.md' ? 0 : 3000)
+    })
   } else {
     response.writeHead(404, headers)
     response.end('not found')
@@ -450,9 +455,11 @@ try {
 
   await check('a task by URL: a slow aufgabe.md doesn\'t take the tab the learner chose', async () => {
     const context = await newContext()
+    holdSlowTask()
     const page = await open(context, taskByUrl(`${libraryBase}langsam/aufgabe.md`))
     assert.equal(await page.locator('.editor-tab.active').innerText(), 'auswerter.py', 'the file that runs until it has loaded')
     await openTab(page, 'bib.py')
+    releaseSlowTask()
     await page.locator('.editor-tab', { hasText: 'aufgabe.md' }).waitFor({ timeout: 15000 })
     await page.waitForTimeout(500)
     assert.equal(await page.locator('.editor-tab.active').innerText(), 'bib.py')
