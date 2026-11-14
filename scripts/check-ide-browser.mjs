@@ -117,8 +117,25 @@ const check = async (label, body) => {
 }
 
 const browser = await chromium.launch({ channel: 'chrome', headless: true })
+// Pyodide and Monaco come from jsDelivr (about 18 MB). Each case has a
+// context of its own (its own storage), which starts with an empty HTTP
+// cache, so every case downloaded all of it again (P58). Each file is
+// fetched once per run and served from memory to every context; a failed
+// fetch is not retried: the request fails, as it would in the browser.
+const cdn = new Map()
+const serveCdnFromMemory = (context) => context.route('https://cdn.jsdelivr.net/**', async (route) => {
+  const url = route.request().url()
+  if (!cdn.has(url)) cdn.set(url, route.fetch().then(async (response) => ({ status: response.status(), headers: response.headers(), body: await response.body() })))
+  let file
+  try { file = await cdn.get(url) } catch { cdn.delete(url); return route.abort('failed') }
+  if (file.status >= 400) cdn.delete(url)
+  // The body is already decoded.
+  const headers = Object.fromEntries(Object.entries(file.headers).filter(([name]) => name !== 'content-encoding' && name !== 'content-length'))
+  await route.fulfill({ status: file.status, headers, body: file.body })
+})
 const newContext = async () => {
   const context = await browser.newContext({ viewport: { width: 1200, height: 800 }, locale: 'de-CH', permissions: ['clipboard-read', 'clipboard-write'] })
+  await serveCdnFromMemory(context)
   // The «leave the page» question (unsaved changes) and the copy-by-hand
   // prompt: accepted.
   context.on('page', (page) => page.on('dialog', (dialog) => { dialog.accept().catch(() => {}) }))
