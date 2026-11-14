@@ -87,4 +87,6 @@ button { font: inherit; }
 .ide-info-list code { font: 600 14px var(--glp-font-code); }
 .ide-info-check { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 14px; }
 .ide-info-check .secondary-button { padding: 5px 10px; font-size: 13px; }
+.ide-info-link { margin: 0 0 10px; font-size: 14px; }
+.ide-info-link a { color: var(--glp-accent); }
 .ide-info .ide-notice { margin: 0; }

@@ -656,6 +656,27 @@ try {
     await context.close()
   })
 
+  // P58: the ? and ⋮ «Info» open the page on how glpython's Python differs
+  // from CPython, in the IDE's language; it links on to the tutorial.
+  await check('? and «Info»: the page «Python in glpython»', async () => {
+    const context = await newContext()
+    const page = await open(context, base)
+    const help = page.locator('.ide-rail a.icon-button')
+    assert.equal(await help.getAttribute('href'), '/python-de.html', 'the ? icon')
+    assert.equal(await help.getAttribute('aria-label'), 'Python in glpython: was anders ist als in CPython')
+    await page.locator('.ide-menu-button').click()
+    await page.getByRole('menuitem', { name: 'Info' }).click()
+    assert.equal(await page.getByRole('dialog').getByRole('link', { name: 'Python in glpython: was anders ist als in CPython' }).getAttribute('href'), '/python-de.html', 'the link in «Info»')
+    for (const [path, other, tutorial] of [['/python-de.html', 'python-en.html', 'Python-Tutorial'], ['/python-en.html', 'python-de.html', 'Python tutorial']]) {
+      const response = await page.goto(new URL(path, base).href)
+      assert.equal(response.status(), 200, path)
+      assert.equal(await page.title(), 'Python in glpython', `${path}: its title`)
+      assert.equal(await page.getByRole('link', { name: tutorial }).getAttribute('href'), 'https://docs.python.org/3/tutorial/index.html', `${path}: the tutorial`)
+      assert.equal(await page.locator('a.lang').getAttribute('href'), other, `${path}: the other language`)
+    }
+    await context.close()
+  })
+
   await check('⋮ «Info»: the version from version.json, and the update check', async () => {
     const { version } = JSON.parse(readFileSync(new URL('../dist/version.json', import.meta.url), 'utf8'))
     const context = await newContext()

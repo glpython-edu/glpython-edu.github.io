@@ -375,6 +375,8 @@ function App() {
 
   // ⋮ «Info»: the version (when a learner reports a problem: «Was steht unter
   // ⋮ → Info?») and the same check as the «Neue Version verfügbar» notice.
+  // The channel's own copy (BASE_URL), in the IDE's language.
+  const pythonPage = `${import.meta.env.BASE_URL}python-${locale}.html`
   const versionDate = new Intl.DateTimeFormat(locale, { dateStyle: 'long', timeStyle: 'short' }).format(new Date(__GLPYTHON_IDE_BUILT__))
   const checkForUpdates = async () => {
     setInfoCheck('checking')
@@ -458,7 +460,7 @@ function App() {
       <div className="ide-body">
         <nav className="ide-rail" aria-label={t.ideTools}>
           <button type="button" ref={filesButtonRef} className="icon-button" aria-label={t.files} title={t.files} aria-expanded={isDrawerOpen} aria-controls="ide-files" onClick={() => setIsDrawerOpen((open) => !open)}><Folder size={19} /></button>
-          <a className="icon-button" href="https://docs.python.org/3/reference/index.html" target="_blank" rel="noreferrer" aria-label={t.pythonReference} title={t.pythonReference}><CircleHelp size={19} /></a>
+          <a className="icon-button" href={pythonPage} target="_blank" rel="noreferrer" aria-label={t.pythonInGlpython} title={t.pythonInGlpython}><CircleHelp size={19} /></a>
         </nav>
         {isDrawerOpen && <aside id="ide-files" className="ide-drawer" ref={drawerRef} aria-label={t.files} onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); closeDrawer() } }}>
           <div className="ide-drawer-head">
@@ -534,6 +536,7 @@ function App() {
             <button type="button" className="secondary-button" onClick={() => { void checkForUpdates() }} disabled={infoCheck === 'checking'}><RotateCcw size={14} /> {t.checkForUpdates}</button>
             <span role="status">{infoCheck === 'checking' ? t.checkingForUpdates : infoCheck === 'current' ? t.upToDate : infoCheck === 'failed' ? t.updateCheckFailed : ''}</span>
           </div>
+          <p className="ide-info-link"><a href={pythonPage} target="_blank" rel="noreferrer">{t.pythonInGlpython}</a></p>
           {infoCheck === 'available' && <div className="ide-notice" role="status"><span>{t.updateAvailable}</span><button type="button" className="secondary-button" onClick={() => window.location.reload()}><RotateCcw size={14} /> {t.reloadNow}</button></div>}
         </div>
       </div>}
