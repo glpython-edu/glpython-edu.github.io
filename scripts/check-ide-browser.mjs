@@ -168,6 +168,19 @@ try {
     try { await fetch(base); break } catch { if (attempt > 100) throw new Error('vite preview did not start') }
     await new Promise((resolve) => setTimeout(resolve, 200))
   }
+  // Monaco's and Pyodide's files first, before any case: then a case's
+  // limits are for the IDE and Python, not for the network, and a CDN that
+  // doesn't answer is reported as such.
+  {
+    const context = await newContext()
+    const page = await context.newPage()
+    await page.goto(base)
+    await page.waitForFunction(() => window.monaco?.editor.getEditors().length > 0, null, { timeout: 300000 })
+      .catch(() => { throw new Error('Monaco did not load from jsDelivr within 5 minutes') })
+    await page.locator('.runtime-badge').waitFor({ state: 'detached', timeout: 300000 })
+      .catch(() => { throw new Error('Pyodide did not load from jsDelivr within 5 minutes') })
+    await context.close()
+  }
 
   await check('fresh tab: one empty main.py; the former starter isn\'t offered', async () => {
     const context = await newContext()
