@@ -416,8 +416,8 @@ try {
     await context.close()
   })
 
-  // P62: the functions imported from the library read «Funktion · parser.py»
-  // in the footer, and their box shows what they do - signature, docstring
+  // P62/P63: the functions imported from the library read «Funktion» in the
+  // footer, like the file's own - no file name there - and their box shows what they do - signature, docstring
   // without its examples, where they come from - not their body; the file's
   // own functions show their whole definition, as before.
   await check('imported functions in the footer: what they do, not how', async () => {
@@ -430,7 +430,8 @@ try {
     await page.locator('.visualizer-step-count', { hasText: 'Vor der' }).waitFor({ timeout: 60000 })
     await page.getByRole('button', { name: 'Letzter Schritt' }).click()
     const entries = await page.locator('.visualizer-globals-list .locals-row').evaluateAll((rows) => rows.map((row) => row.innerText.replace(/\s+/g, ' ').trim()))
-    assert.deepEqual(entries.slice(0, 2), ['parse Funktion · parser.py', 'ist_liste Funktion · parser.py'], 'the imported names')
+    assert.deepEqual(entries.slice(0, 2), ['parse Funktion', 'ist_liste Funktion'], 'the imported names: no file name')
+    assert.ok(entries.every((entry) => !entry.includes('parser.py')), `no file name in the footer: ${entries}`)
     assert.equal(entries[4], 'auswerten Funktion', 'a function of the file')
     const peek = async (name) => {
       await page.mouse.move(0, 0)
