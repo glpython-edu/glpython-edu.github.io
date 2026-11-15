@@ -43,8 +43,13 @@ const server = spawn('npx', ['vite', 'preview', '--port', String(port), '--stric
 // The libraries a link names by URL: bib.py, with CORS as GitHub Pages sends
 // it; anything else is a 404 (with CORS too, so the IDE sees the status).
 const library = 'def gross(text):\n    return text.upper()\n'
-// Also a task's instructions (aufgabe.md), and the same 3 seconds late.
+// Also a task's instructions (aufgabe.md), and the same held back until the
+// check lets it go (slowTask): with a fixed delay (3 s) the file came before
+// the check had looked when opening the IDE took longer (P58).
 let aufgabe
+let slowTask = Promise.resolve()
+let releaseSlowTask = () => {}
+const holdSlowTask = () => { slowTask = new Promise((resolve) => { releaseSlowTask = resolve }) }
 const libraryServer = http.createServer((request, response) => {
   const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'text/plain; charset=utf-8' }
   const pathname = new URL(request.url, libraryBase).pathname
@@ -52,10 +57,10 @@ const libraryServer = http.createServer((request, response) => {
     response.writeHead(200, headers)
     response.end(library)
   } else if (pathname === '/aufgabe.md' || pathname === '/langsam/aufgabe.md') {
-    setTimeout(() => {
+    void (pathname === '/aufgabe.md' ? Promise.resolve() : slowTask).then(() => {
       response.writeHead(200, headers)
       response.end(aufgabe)
-    }, pathname === '/aufgabe.md' ? 0 : 3000)
+    })
   } else {
     response.writeHead(404, headers)
     response.end('not found')
@@ -117,8 +122,27 @@ const check = async (label, body) => {
 }
 
 const browser = await chromium.launch({ channel: 'chrome', headless: true })
+// Pyodide and Monaco come from jsDelivr (about 18 MB). Each case has a
+// context of its own (its own storage), which starts with an empty HTTP
+// cache, so every case downloaded all of it again (P58). Each file is
+// fetched once per run and served from memory to every context; a failed
+// fetch is not retried: the request fails, as it would in the browser.
+const cdn = new Map()
+let served = 0
+const serveCdnFromMemory = (context) => context.route('https://cdn.jsdelivr.net/**', async (route) => {
+  const url = route.request().url()
+  served += 1
+  if (!cdn.has(url)) cdn.set(url, route.fetch().then(async (response) => ({ status: response.status(), headers: response.headers(), body: await response.body() })))
+  let file
+  try { file = await cdn.get(url) } catch { cdn.delete(url); return route.abort('failed') }
+  if (file.status >= 400) cdn.delete(url)
+  // The body is already decoded.
+  const headers = Object.fromEntries(Object.entries(file.headers).filter(([name]) => name !== 'content-encoding' && name !== 'content-length'))
+  await route.fulfill({ status: file.status, headers, body: file.body })
+})
 const newContext = async () => {
   const context = await browser.newContext({ viewport: { width: 1200, height: 800 }, locale: 'de-CH', permissions: ['clipboard-read', 'clipboard-write'] })
+  await serveCdnFromMemory(context)
   // The «leave the page» question (unsaved changes) and the copy-by-hand
   // prompt: accepted.
   context.on('page', (page) => page.on('dialog', (dialog) => { dialog.accept().catch(() => {}) }))
@@ -150,6 +174,19 @@ try {
   for (let attempt = 0; ; attempt++) {
     try { await fetch(base); break } catch { if (attempt > 100) throw new Error('vite preview did not start') }
     await new Promise((resolve) => setTimeout(resolve, 200))
+  }
+  // Monaco's and Pyodide's files first, before any case: then a case's
+  // limits are for the IDE and Python, not for the network, and a CDN that
+  // doesn't answer is reported as such.
+  {
+    const context = await newContext()
+    const page = await context.newPage()
+    await page.goto(base)
+    await page.waitForFunction(() => window.monaco?.editor.getEditors().length > 0, null, { timeout: 300000 })
+      .catch(() => { throw new Error('Monaco did not load from jsDelivr within 5 minutes') })
+    await page.locator('.runtime-badge').waitFor({ state: 'detached', timeout: 300000 })
+      .catch(() => { throw new Error('Pyodide did not load from jsDelivr within 5 minutes') })
+    await context.close()
   }
 
   await check('fresh tab: one empty main.py; the former starter isn\'t offered', async () => {
@@ -418,9 +455,11 @@ try {
 
   await check('a task by URL: a slow aufgabe.md doesn\'t take the tab the learner chose', async () => {
     const context = await newContext()
+    holdSlowTask()
     const page = await open(context, taskByUrl(`${libraryBase}langsam/aufgabe.md`))
     assert.equal(await page.locator('.editor-tab.active').innerText(), 'auswerter.py', 'the file that runs until it has loaded')
     await openTab(page, 'bib.py')
+    releaseSlowTask()
     await page.locator('.editor-tab', { hasText: 'aufgabe.md' }).waitFor({ timeout: 15000 })
     await page.waitForTimeout(500)
     assert.equal(await page.locator('.editor-tab.active').innerText(), 'bib.py')
@@ -641,4 +680,5 @@ try {
   stop()
 }
 if (failed > 0) process.exit(1)
+console.log(`jsDelivr: ${cdn.size} files fetched once, ${served - cdn.size} requests served from memory.`)
 console.log('IDE browser checks passed.')
