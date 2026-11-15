@@ -29,9 +29,11 @@ type ShellStrings = {
   addFile: string
   renameFile: (path: string) => string
   deleteFile: (path: string) => string
-  // ? and ⋮ «Info»: the page on how glpython's Python differs from CPython
+  // ?: the Python tutorial, for learners (pythonTutorialUrl).
+  pythonTutorial: string
+  // ⋮ «Info»: the page for teachers on how glpython differs from CPython
   // (public/python-de.html, python-en.html).
-  pythonInGlpython: string
+  pythonDifferences: string
   newProject: string
   about: string
   // ⋮ «Optionen»: which parts the tab shows, one switch each (features.ts).
@@ -107,7 +109,8 @@ export const translations: Record<Locale, Translation> = {
     addFile: 'Add file',
     renameFile: (path) => `Rename ${path}`,
     deleteFile: (path) => `Delete ${path}`,
-    pythonInGlpython: 'Python in glpython: how it differs from CPython',
+    pythonTutorial: 'Python tutorial',
+    pythonDifferences: 'Differences between glpython and CPython',
     newProject: 'New empty project',
     about: 'About',
     options: 'Options',
@@ -185,7 +188,8 @@ export const translations: Record<Locale, Translation> = {
     addFile: 'Datei hinzufügen',
     renameFile: (path) => `${path} umbenennen`,
     deleteFile: (path) => `${path} löschen`,
-    pythonInGlpython: 'Python in glpython: was anders ist als in CPython',
+    pythonTutorial: 'Python-Tutorial',
+    pythonDifferences: 'Unterschiede zwischen glpython und CPython',
     newProject: 'Neues leeres Projekt',
     about: 'Info',
     options: 'Optionen',

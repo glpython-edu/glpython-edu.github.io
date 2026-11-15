@@ -1,8 +1,10 @@
 # How glpython's Python differs from CPython: the inventory
 
-For whoever maintains the help page `public/python-de.html` / `python-en.html`
-(linked from the IDE's ? and ⋮ «Info»). Each point: what differs, and where it
-is decided. Paths without a repo are in glpython-editor; `(IDE)` is this repo.
+For whoever maintains the page «Unterschiede zwischen glpython und CPython»,
+`public/python-de.html` / `python-en.html` (for teachers; linked from ⋮ «Info»
+and the README). Each point: what differs, and where it is decided. The page
+sorts the points into Ergänzungen, Was fehlt and Abweichungen; the points under
+«Found while checking» are its «Bekannte Fehler» (P59), not differences. Paths without a repo are in glpython-editor; `(IDE)` is this repo.
 Checked on 2026-11-14 with editor `dev@50107b6`, by running each case in the
 embed (with and without cross-origin isolation), not from memory.
 
@@ -87,7 +89,7 @@ When a point changes in the code, change the page (both languages) too.
 | Limits | 6000 steps (then cut), 200 nested calls (`RecursionError: maximum interpreted recursion depth exceeded`) | `visualizer.py` (`_GLPYTHON_MAX_STEPS`, `_GLPYTHON_MAX_CALL_DEPTH`) |
 | A REPL entry | Replays the session; a difference (e.g. random numbers) or `input()` gives a note instead | `src/runtime/session.py` (`_glpython_replay_*`), `src/pyodide-worker.js` (`replayReplEntry`) |
 
-## Found while checking (not changed: each would change what learners see)
+## Found while checking: the page's «Bekannte Fehler» (P59; remove each from both pages when fixed)
 
 - A last line without a line end (`print("x", end="")` as the last output) doesn't
   appear, and is printed glued to the next Run's first line (`xvorher`): Pyodide's

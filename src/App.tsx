@@ -29,6 +29,13 @@ const LONG_LINK = 2083
 const OFFER_CLOSED_MS = 24 * 60 * 60 * 1000
 
 // «vor 2 Stunden», «2 hours ago»; under a minute «gerade eben».
+// The ? in the rail: the Python tutorial for learners, in German where
+// python.org has it translated.
+const pythonTutorialUrl: Record<Locale, string> = {
+  de: 'https://docs.python.org/de/3/tutorial/index.html',
+  en: 'https://docs.python.org/3/tutorial/index.html',
+}
+
 function timeAgo(time: number, locale: string, justNow: string): string {
   const format = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
   const minutes = Math.round((time - Date.now()) / 60000)
@@ -375,8 +382,9 @@ function App() {
 
   // ⋮ «Info»: the version (when a learner reports a problem: «Was steht unter
   // ⋮ → Info?») and the same check as the «Neue Version verfügbar» notice.
-  // The channel's own copy (BASE_URL), in the IDE's language.
-  const pythonPage = `${import.meta.env.BASE_URL}python-${locale}.html`
+  // The differences page is for teachers, so only «Info» links to it: the
+  // channel's own copy (BASE_URL), in the IDE's language.
+  const differencesPage = `${import.meta.env.BASE_URL}python-${locale}.html`
   const versionDate = new Intl.DateTimeFormat(locale, { dateStyle: 'long', timeStyle: 'short' }).format(new Date(__GLPYTHON_IDE_BUILT__))
   const checkForUpdates = async () => {
     setInfoCheck('checking')
@@ -460,7 +468,7 @@ function App() {
       <div className="ide-body">
         <nav className="ide-rail" aria-label={t.ideTools}>
           <button type="button" ref={filesButtonRef} className="icon-button" aria-label={t.files} title={t.files} aria-expanded={isDrawerOpen} aria-controls="ide-files" onClick={() => setIsDrawerOpen((open) => !open)}><Folder size={19} /></button>
-          <a className="icon-button" href={pythonPage} target="_blank" rel="noreferrer" aria-label={t.pythonInGlpython} title={t.pythonInGlpython}><CircleHelp size={19} /></a>
+          <a className="icon-button" href={pythonTutorialUrl[locale]} target="_blank" rel="noreferrer" aria-label={t.pythonTutorial} title={t.pythonTutorial}><CircleHelp size={19} /></a>
         </nav>
         {isDrawerOpen && <aside id="ide-files" className="ide-drawer" ref={drawerRef} aria-label={t.files} onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); closeDrawer() } }}>
           <div className="ide-drawer-head">
@@ -536,7 +544,7 @@ function App() {
             <button type="button" className="secondary-button" onClick={() => { void checkForUpdates() }} disabled={infoCheck === 'checking'}><RotateCcw size={14} /> {t.checkForUpdates}</button>
             <span role="status">{infoCheck === 'checking' ? t.checkingForUpdates : infoCheck === 'current' ? t.upToDate : infoCheck === 'failed' ? t.updateCheckFailed : ''}</span>
           </div>
-          <p className="ide-info-link"><a href={pythonPage} target="_blank" rel="noreferrer">{t.pythonInGlpython}</a></p>
+          <p className="ide-info-link"><a href={differencesPage} target="_blank" rel="noreferrer">{t.pythonDifferences}</a></p>
           {infoCheck === 'available' && <div className="ide-notice" role="status"><span>{t.updateAvailable}</span><button type="button" className="secondary-button" onClick={() => window.location.reload()}><RotateCcw size={14} /> {t.reloadNow}</button></div>}
         </div>
       </div>}
