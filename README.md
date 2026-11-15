@@ -30,8 +30,8 @@ The IDE looks like the LiaScript embed, only larger:
   and an empty console, ■ stops a hung program, and «Python neu starten» (a new
   Python and an empty console, as the embed's Reset; the code stays) is in ⋮.
 - **Left edge:** **Dateien** (a drawer over the editor: the project name, its
-  files, new, rename, delete) and **Python-Referenz**, labelled in their
-  tooltips. Every file is also a tab above the editor.
+  files, new, rename, delete) and **?**, the Python tutorial for learners
+  (German where python.org has it), labelled in their tooltips. Every file is also a tab above the editor.
 - **Below:** the workspace in its stacked layout (editor on top, console
   below, a draggable divider; graphics beside the editor only while a program
   draws; the visualizer in place of the editor). See glpython-editor's README.
@@ -103,6 +103,10 @@ automatically in the browser:
   `version.json` - and **Nach Updates suchen** runs the same check: «Diese
   Version ist aktuell.», or the notice with «Neu laden». When a learner reports
   a problem, it tells whether their browser still runs an old version.
+  It also links **Unterschiede zwischen glpython und CPython**, a page for
+  teachers ([de](https://glpython-edu.github.io/python-de.html),
+  [en](https://glpython-edu.github.io/python-en.html);
+  `public/python-de.html`, `python-en.html`).
 
 The ⋮ menu and the bar support:
 

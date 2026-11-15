@@ -656,6 +656,34 @@ try {
     await context.close()
   })
 
+  // P42: the ? is for learners and opens the Python tutorial (German where
+  // python.org has it); the differences page is for teachers, linked only
+  // from ⋮ «Info», in the IDE's language, and links on to the tutorial.
+  await check('? opens the tutorial; «Info» links the differences page', async () => {
+    const context = await newContext()
+    const page = await open(context, base)
+    const help = page.locator('.ide-rail a.icon-button')
+    assert.equal(await help.getAttribute('href'), 'https://docs.python.org/de/3/tutorial/index.html', 'the ? icon')
+    assert.equal(await help.getAttribute('aria-label'), 'Python-Tutorial')
+    assert.equal(await page.locator('a[href$="python-de.html"], a[href$="python-en.html"]').count(), 0, 'no link to the differences page outside «Info»')
+    await page.locator('.ide-menu-button').click()
+    await page.getByRole('menuitem', { name: 'Info' }).click()
+    assert.equal(await page.getByRole('dialog').getByRole('link', { name: 'Unterschiede zwischen glpython und CPython' }).getAttribute('href'), '/python-de.html', 'the link in «Info»')
+    for (const [path, title, other, tutorial, tutorialUrl] of [
+      ['/python-de.html', 'Unterschiede zwischen glpython und CPython', 'python-en.html', 'Python-Tutorial', 'https://docs.python.org/de/3/tutorial/index.html'],
+      ['/python-en.html', 'Differences between glpython and CPython', 'python-de.html', 'Python tutorial', 'https://docs.python.org/3/tutorial/index.html'],
+    ]) {
+      const response = await page.goto(new URL(path, base).href)
+      assert.equal(response.status(), 200, path)
+      assert.equal(await page.title(), title, `${path}: its title`)
+      assert.equal(await page.locator('h1').textContent(), title, `${path}: its heading`)
+      assert.equal(await page.locator('main > h2').count(), 3, `${path}: three categories`)
+      assert.equal(await page.getByRole('link', { name: tutorial }).getAttribute('href'), tutorialUrl, `${path}: the tutorial`)
+      assert.equal(await page.locator('a.lang').getAttribute('href'), other, `${path}: the other language`)
+    }
+    await context.close()
+  })
+
   await check('⋮ «Info»: the version from version.json, and the update check', async () => {
     const { version } = JSON.parse(readFileSync(new URL('../dist/version.json', import.meta.url), 'utf8'))
     const context = await newContext()

@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unterschiede zwischen glpython und CPython</title>
+<link rel="icon" href="favicon.svg?v=2" type="image/svg+xml">
+<style>
+  :root { --bg: #FFFFFF; --surface: #F3F4F6; --border: #D1D5DB; --text: #1A1A1A; --muted: #4B5563; --accent: #1F3A5F; --code: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 system-ui, sans-serif; }
+  main { max-width: 46rem; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 1.6rem; line-height: 1.25; margin: 0 0 8px; color: var(--accent); }
+  h2 { font-size: 1.15rem; margin: 32px 0 8px; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+  p, ul { margin: 8px 0; }
+  li { margin: 4px 0; }
+  code { font-family: var(--code); font-size: .92em; background: var(--surface); padding: 0 3px; border-radius: 4px; }
+  a { color: var(--accent); }
+  .lead { color: var(--muted); }
+  h3 { font-size: 1rem; margin: 20px 0 4px; }
+  .lang { float: right; font-size: .9rem; }
+  .bugs { margin-top: 32px; padding: 8px 16px; background: var(--surface); border-radius: 6px; }
+  .bugs h2 { margin-top: 8px; border: 0; }
+</style>
+</head>
+<body>
+<main>
+<a class="lang" href="python-en.html" hreflang="en" lang="en">English</a>
+<h1>Unterschiede zwischen glpython und CPython</h1>
+
+<p>glpython führt <strong>Python 3.12</strong> im Browser aus, mit
+<a href="https://pyodide.org/">Pyodide</a> 0.26: das ist CPython, übersetzt nach WebAssembly.
+Die Sprache und die Standardbibliothek sind dieselben. Zur Sprache selbst:
+das <a href="https://docs.python.org/de/3/tutorial/index.html">Python-Tutorial</a> und die
+<a href="https://docs.python.org/3/reference/index.html">Sprachreferenz</a> (englisch).</p>
+
+<h2>Ergänzungen</h2>
+
+<h3>Visualisierer</h3>
+<p>Zeigt ein Programm Ausdruck für Ausdruck, in einem eigenen Interpreter. Das Ergebnis ist
+dasselbe wie in CPython; welche Schritte er zeigt, legt glpython fest:</p>
+<ul>
+  <li><code>xs[1]</code> ist ein Schritt, direkt zum Element (kein Schritt für <code>xs</code>).</li>
+  <li><code>[…]</code>, <code>(…)</code>, <code>{…}</code> und negative Zahlen wie <code>-3</code>
+    haben keinen eigenen Schritt, ausser ihr Wert sieht anders aus als der Text.</li>
+  <li>Werte stehen so da, wie man sie schreibt (<code>int</code>, nicht
+    <code>&lt;class 'int'&gt;</code>); lange Werte gekürzt, ein Klick zeigt sie ganz.</li>
+  <li>Was er nicht im Einzelnen kennt, läuft in einem Schritt.</li>
+  <li>Höchstens 6000 Schritte und 200 verschachtelte Aufrufe, dann
+    <code>RecursionError: maximum interpreted recursion depth exceeded</code>.</li>
+  <li>Eine Eingabe der Konsole visualisieren spielt die Sitzung noch einmal ab; kommt etwas
+    anderes heraus (Zufallszahlen) oder braucht sie <code>input()</code>, steht ein Hinweis da.</li>
+</ul>
+
+<h3>Tests</h3>
+<ul>
+  <li>«Tests» führt die Beispiele in den Docstrings aus wie <code>python -m doctest main.py</code>.</li>
+  <li>Sind Erwartung und Ausgabe je ein Literal, zählt der Wert: <code>4</code> passt zu
+    <code>4.0</code>, <code>"+"</code> zu <code>'+'</code>, <code>[1,2,3]</code> zu
+    <code>[1, 2, 3]</code>. Sonst vergleicht doctest als Text.</li>
+  <li>Wo eingeschaltet, nennt der Bericht die Zeilen, die kein Beispiel ausgeführt hat
+    (nur wenn alle Beispiele passen).</li>
+</ul>
+
+<h3>Weiteres</h3>
+<ul>
+  <li>Unter Pythons Fehlermeldung steht bei häufigen Fehlern ein kurzer Hinweis; die Meldung
+    selbst bleibt unverändert.</li>
+  <li>Das Modul <code>gturtle</code> für Turtle-Grafik: <code>makeTurtle()</code>,
+    <code>forward()</code>, <code>backward()</code>, <code>left()</code>, <code>right()</code>,
+    <code>penUp()</code>, <code>penDown()</code>, <code>setPenColor()</code>,
+    <code>setLineWidth()</code>, <code>clear()</code>.</li>
+  <li>Die Eingabezeile <code>&gt;&gt;&gt;</code> arbeitet nach ▶ mit den Namen der Datei
+    weiter, wie <code>python -i main.py</code>.</li>
+</ul>
+
+<h2>Was fehlt</h2>
+<ul>
+  <li><strong>Netz:</strong> <code>urllib.request</code> kennt kein <code>https</code>,
+    <code>socket</code> erreicht nichts.</li>
+  <li><strong>Threads und Prozesse:</strong> <code>threading</code>, <code>subprocess</code>,
+    <code>multiprocessing</code>, <code>os.fork()</code> geben einen Fehler.</li>
+  <li><strong>Pakete:</strong> kein <code>pip</code>, nur die Standardbibliothek
+    (kein <code>numpy</code>, kein <code>requests</code>).</li>
+  <li><strong>Module der Standardbibliothek:</strong> <code>tkinter</code>, <code>turtle</code>,
+    <code>sqlite3</code>, <code>ssl</code>, <code>lzma</code>, <code>curses</code>,
+    <code>readline</code>, <code>dbm</code>, <code>venv</code>, <code>ensurepip</code>,
+    <code>idlelib</code>.</li>
+  <li><code>asyncio.run()</code> und <code>webbrowser</code>.</li>
+  <li><code>input()</code> in einem eingebetteten Editor (z.&nbsp;B. in einem Kurs) oft:
+    <code>RuntimeError: input() is not available here</code>; dort gehen auch <code>help()</code>,
+    <code>breakpoint()</code> und <code>sys.stdin</code> nicht. In der IDE geht <code>input()</code>.</li>
+  <li><strong>Geschriebene Dateien bleiben nicht:</strong> Was ein Programm schreibt, liegt nur im
+    Speicher, bis Python neu startet; es erscheint nicht im Editor. Eine Datei des Projekts hat
+    beim nächsten ▶ wieder den Text aus dem Editor.</li>
+</ul>
+
+<h2>Abweichungen</h2>
+
+<h3>▶ startet keine neue Sitzung</h3>
+<p>Das <strong>erste</strong> ▶ startet Python. Jedes weitere ▶ führt die Hauptdatei in einem
+frischen <code>__main__</code> aus, aber im <strong>selben</strong> Python: Geladene Module der
+Standardbibliothek behalten ihren Zustand (<code>random</code> setzt seine Folge fort), und die
+Eingabezeile arbeitet mit den Namen der Datei weiter, wie <code>python -i main.py</code>.
+Die Dateien des Projekts lädt jedes ▶ neu. Stopp und «Python neu starten» (⋮) starten ein
+neues Python.</p>
+
+<h3>Dateien</h3>
+<ul>
+  <li>Die Dateien des Projekts liegen in <code>/</code> (<code>/main.py</code>);
+    <code>import hilfe</code> findet <code>hilfe.py</code>.</li>
+  <li>▶ führt die Hauptdatei aus, nicht die Datei im Editor; die Konsole nennt sie.</li>
+</ul>
+
+<h3>Ausgabe und Eingabe</h3>
+<ul>
+  <li>Die Ausgabe erscheint zeilenweise: <code>print(…, end="")</code> erst mit der nächsten Zeile.</li>
+  <li><code>sys.stdout</code> und <code>sys.stderr</code> erscheinen gemischt in der Konsole.</li>
+  <li><code>input()</code> fragt in der Konsole: Die Zeile <code>&gt;&gt;&gt;</code> wird zur
+    Eingabezeile; Frage und Antwort erscheinen danach als eine Zeile.</li>
+  <li>Stopp beendet Python ganz, ohne <code>KeyboardInterrupt</code>; die Eingabezeile kennt danach
+    nichts mehr. Wartet das Programm auf <code>input()</code>, gibt Stopp <code>EOFError</code>.</li>
+</ul>
+
+<h3>Umgebung und Fehlermeldungen</h3>
+<ul>
+  <li><code>sys.argv</code> ist <code>['']</code>, <code>__file__</code> ist <code>/main.py</code>,
+    <code>sys.platform</code> ist <code>emscripten</code>; die Zeitzone ist die des Browsers.</li>
+  <li>Im Traceback heissen die Dateien des Projekts <code>main.py</code>, ohne Ordner.</li>
+  <li>Fehlernummern sind die von Emscripten: eine fehlende Datei <code>[Errno 44]</code> statt
+    <code>[Errno 2]</code>.</li>
+</ul>
+
+<h3>Turtle-Grafik</h3>
+<ul>
+  <li>Das Bild erscheint, wenn das Programm fertig ist, nicht Strich für Strich (im Visualisierer
+    Schritt für Schritt).</li>
+</ul>
+
+<section class="bugs">
+<h2>Bekannte Fehler</h2>
+<p>Kein gewolltes Verhalten; sie werden behoben.</p>
+<ul>
+  <li>Eine letzte Zeile ohne Zeilenende (<code>print("x", end="")</code> am Schluss) erscheint
+    erst beim nächsten ▶, vor dessen Ausgabe.</li>
+  <li>Leerzeichen und leere Zeilen am Anfang der Ausgabe fallen weg, wenn das Programm ohne Fehler
+    endet; leere Zeilen am Ende immer.</li>
+  <li>Das Arbeitsverzeichnis ist <code>/home/pyodide</code>, die Dateien liegen in <code>/</code>:
+    <code>open("daten.txt")</code> findet eine Datei des Projekts nicht,
+    <code>open("/daten.txt")</code> schon.</li>
+  <li><code>sys.exit()</code> und <code>exit()</code> zeigen <code>SystemExit</code> in der Konsole
+    statt still zu enden.</li>
+</ul>
+</section>
+</main>
+</body>
+</html>

@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Differences between glpython and CPython</title>
+<link rel="icon" href="favicon.svg?v=2" type="image/svg+xml">
+<style>
+  :root { --bg: #FFFFFF; --surface: #F3F4F6; --border: #D1D5DB; --text: #1A1A1A; --muted: #4B5563; --accent: #1F3A5F; --code: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 system-ui, sans-serif; }
+  main { max-width: 46rem; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 1.6rem; line-height: 1.25; margin: 0 0 8px; color: var(--accent); }
+  h2 { font-size: 1.15rem; margin: 32px 0 8px; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+  p, ul { margin: 8px 0; }
+  li { margin: 4px 0; }
+  code { font-family: var(--code); font-size: .92em; background: var(--surface); padding: 0 3px; border-radius: 4px; }
+  a { color: var(--accent); }
+  .lead { color: var(--muted); }
+  h3 { font-size: 1rem; margin: 20px 0 4px; }
+  .lang { float: right; font-size: .9rem; }
+  .bugs { margin-top: 32px; padding: 8px 16px; background: var(--surface); border-radius: 6px; }
+  .bugs h2 { margin-top: 8px; border: 0; }
+</style>
+</head>
+<body>
+<main>
+<a class="lang" href="python-de.html" hreflang="de" lang="de">Deutsch</a>
+<h1>Differences between glpython and CPython</h1>
+
+<p>glpython runs <strong>Python 3.12</strong> in the browser, with
+<a href="https://pyodide.org/">Pyodide</a> 0.26: CPython compiled to WebAssembly.
+The language and the standard library are the same. For the language itself:
+the <a href="https://docs.python.org/3/tutorial/index.html">Python tutorial</a> and the
+<a href="https://docs.python.org/3/reference/index.html">language reference</a>.</p>
+
+<h2>Additions</h2>
+
+<h3>Visualizer</h3>
+<p>Shows a program expression by expression, in an interpreter of its own. The result is the
+same as in CPython; glpython decides which steps it shows:</p>
+<ul>
+  <li><code>xs[1]</code> is one step, straight to the element (no step for <code>xs</code>).</li>
+  <li><code>[…]</code>, <code>(…)</code>, <code>{…}</code> and negative numbers like <code>-3</code>
+    get no step of their own, unless their value reads differently from the text.</li>
+  <li>Values are shown as one writes them (<code>int</code>, not
+    <code>&lt;class 'int'&gt;</code>); long values are cut, a click shows them in full.</li>
+  <li>What it doesn't know in detail runs as one step.</li>
+  <li>At most 6000 steps and 200 nested calls, then
+    <code>RecursionError: maximum interpreted recursion depth exceeded</code>.</li>
+  <li>Visualizing a console input replays the session; if something comes out differently
+    (random numbers) or it needs <code>input()</code>, a note is shown instead.</li>
+</ul>
+
+<h3>Tests</h3>
+<ul>
+  <li>«Tests» runs the examples in the docstrings like <code>python -m doctest main.py</code>.</li>
+  <li>When the expected text and the output are each one literal, the value counts:
+    <code>4</code> matches <code>4.0</code>, <code>"+"</code> matches <code>'+'</code>,
+    <code>[1,2,3]</code> matches <code>[1, 2, 3]</code>. Otherwise doctest compares text.</li>
+  <li>Where switched on, the report names the lines no example ran (only when all examples pass).</li>
+</ul>
+
+<h3>More</h3>
+<ul>
+  <li>Below Python's error message, common mistakes get a short hint; the message itself is
+    unchanged.</li>
+  <li>The module <code>gturtle</code> for turtle graphics: <code>makeTurtle()</code>,
+    <code>forward()</code>, <code>backward()</code>, <code>left()</code>, <code>right()</code>,
+    <code>penUp()</code>, <code>penDown()</code>, <code>setPenColor()</code>,
+    <code>setLineWidth()</code>, <code>clear()</code>.</li>
+  <li>The input line <code>&gt;&gt;&gt;</code> works on with the file's names after ▶, like
+    <code>python -i main.py</code>.</li>
+</ul>
+
+<h2>Missing</h2>
+<ul>
+  <li><strong>Network:</strong> <code>urllib.request</code> has no <code>https</code>,
+    <code>socket</code> reaches nothing.</li>
+  <li><strong>Threads and processes:</strong> <code>threading</code>, <code>subprocess</code>,
+    <code>multiprocessing</code>, <code>os.fork()</code> raise an error.</li>
+  <li><strong>Packages:</strong> no <code>pip</code>, only the standard library
+    (no <code>numpy</code>, no <code>requests</code>).</li>
+  <li><strong>Standard modules:</strong> <code>tkinter</code>, <code>turtle</code>,
+    <code>sqlite3</code>, <code>ssl</code>, <code>lzma</code>, <code>curses</code>,
+    <code>readline</code>, <code>dbm</code>, <code>venv</code>, <code>ensurepip</code>,
+    <code>idlelib</code>.</li>
+  <li><code>asyncio.run()</code> and <code>webbrowser</code>.</li>
+  <li><code>input()</code> in an embedded editor (e.g. in a course), often:
+    <code>RuntimeError: input() is not available here</code>; <code>help()</code>,
+    <code>breakpoint()</code> and <code>sys.stdin</code> don't work there either. In the IDE
+    <code>input()</code> works.</li>
+  <li><strong>Written files aren't kept:</strong> what a program writes stays in memory until
+    Python restarts; it doesn't appear in the editor. A project file has the editor's text again
+    at the next ▶.</li>
+</ul>
+
+<h2>Differences</h2>
+
+<h3>▶ doesn't start a new session</h3>
+<p>The <strong>first</strong> ▶ starts Python. Every later ▶ runs the main file in a fresh
+<code>__main__</code>, but in the <strong>same</strong> Python: loaded standard modules keep
+their state (<code>random</code> continues its sequence), and the input line works on with the
+file's names, like <code>python -i main.py</code>. Every ▶ loads the project's files again.
+Stop and «Restart Python» (⋮) start a new Python.</p>
+
+<h3>Files</h3>
+<ul>
+  <li>The project's files are in <code>/</code> (<code>/main.py</code>);
+    <code>import hilfe</code> finds <code>hilfe.py</code>.</li>
+  <li>▶ runs the main file, not the file in the editor; the console names it.</li>
+</ul>
+
+<h3>Output and input</h3>
+<ul>
+  <li>Output appears line by line: <code>print(…, end="")</code> only with the next line.</li>
+  <li><code>sys.stdout</code> and <code>sys.stderr</code> appear mixed in the console.</li>
+  <li><code>input()</code> asks in the console: the line <code>&gt;&gt;&gt;</code> becomes the
+    input line; prompt and answer then appear as one line.</li>
+  <li>Stop ends Python entirely, without <code>KeyboardInterrupt</code>; the input line then knows
+    nothing from before. While the program waits for <code>input()</code>, Stop gives
+    <code>EOFError</code>.</li>
+</ul>
+
+<h3>Environment and error messages</h3>
+<ul>
+  <li><code>sys.argv</code> is <code>['']</code>, <code>__file__</code> is <code>/main.py</code>,
+    <code>sys.platform</code> is <code>emscripten</code>; the time zone is the browser's.</li>
+  <li>In a traceback the project's files are named <code>main.py</code>, without a folder.</li>
+  <li>Error numbers are Emscripten's: a missing file is <code>[Errno 44]</code>, not
+    <code>[Errno 2]</code>.</li>
+</ul>
+
+<h3>Turtle graphics</h3>
+<ul>
+  <li>The picture appears when the program has finished, not stroke by stroke (in the visualizer
+    step by step).</li>
+</ul>
+
+<section class="bugs">
+<h2>Known bugs</h2>
+<p>Not intended; they will be fixed.</p>
+<ul>
+  <li>A last line without a line end (<code>print("x", end="")</code> at the end) appears only
+    at the next ▶, before its output.</li>
+  <li>Spaces and empty lines at the start of the output disappear when the program ends without
+    an error; empty lines at the end always.</li>
+  <li>The working directory is <code>/home/pyodide</code>, the files are in <code>/</code>:
+    <code>open("daten.txt")</code> doesn't find a project file, <code>open("/daten.txt")</code> does.</li>
+  <li><code>sys.exit()</code> and <code>exit()</code> show <code>SystemExit</code> in the console
+    instead of ending silently.</li>
+</ul>
+</section>
+</main>
+</body>
+</html>
