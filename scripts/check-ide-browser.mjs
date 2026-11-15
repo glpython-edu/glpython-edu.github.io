@@ -49,7 +49,7 @@ const library = 'def gross(text):\n    return text.upper()\n'
 let aufgabe
 // The Etappe 4 scaffold's shape (P61): a parser by URL, the evaluator's
 // functions calling each other, so that call boxes open inside call boxes.
-const parser = 'def ist_liste(wert):\n    return isinstance(wert, list)\n\n\ndef parse(text):\n    teile = text.split()\n    if len(teile) == 1:\n        return int(teile[0])\n    return [teile[1], int(teile[0]), int(teile[2])]\n'
+const parser = 'def ist_liste(wert):\n    return isinstance(wert, list)\n\n\ndef parse(text):\n    """Gibt den Baum zum Ausdruck text zurück.\n\n    >>> parse("2 + 3")\n    [\'+\', 2, 3]\n    """\n    teile = text.split()\n    if len(teile) == 1:\n        return int(teile[0])\n    return [teile[1], int(teile[0]), int(teile[2])]\n'
 let slowTask = Promise.resolve()
 let releaseSlowTask = () => {}
 const holdSlowTask = () => { slowTask = new Promise((resolve) => { releaseSlowTask = resolve }) }
@@ -413,6 +413,35 @@ try {
     assert.deepEqual(await names(), [...session, 'x'], 'before the input ran')
     await page.getByRole('button', { name: 'Letzter Schritt' }).click()
     assert.deepEqual(await names(), [...session, 'x', 'y'], 'at the end')
+    await context.close()
+  })
+
+  // P62: the functions imported from the library read «Funktion · parser.py»
+  // in the footer, and their box shows what they do - signature, docstring
+  // without its examples, where they come from - not their body; the file's
+  // own functions show their whole definition, as before.
+  await check('imported functions in the footer: what they do, not how', async () => {
+    const context = await newContext()
+    const page = await open(context, scaffold(`${evaluator}\n\nberechnen("2 + 3")\n`))
+    // The library's tab stays as it was.
+    assert.ok((await tabs(page)).some((tab) => tab.includes('parser.py')), `the parser.py tab: ${await tabs(page)}`)
+    await pythonReady(page)
+    await page.getByRole('button', { name: 'Visualisieren' }).click()
+    await page.locator('.visualizer-step-count', { hasText: 'Vor der' }).waitFor({ timeout: 60000 })
+    await page.getByRole('button', { name: 'Letzter Schritt' }).click()
+    const entries = await page.locator('.visualizer-globals-list .locals-row').evaluateAll((rows) => rows.map((row) => row.innerText.replace(/\s+/g, ' ').trim()))
+    assert.deepEqual(entries.slice(0, 2), ['parse Funktion · parser.py', 'ist_liste Funktion · parser.py'], 'the imported names')
+    assert.equal(entries[4], 'auswerten Funktion', 'a function of the file')
+    const peek = async (name) => {
+      await page.mouse.move(0, 0)
+      await page.locator('.visualizer-globals-peek').waitFor({ state: 'detached', timeout: 5000 })
+      await page.locator(`.visualizer-globals .locals-row[data-name="${name}"]`).hover()
+      return (await page.locator('.visualizer-globals-peek').innerText()).replace(/\n+/g, '\n').trim()
+    }
+    assert.equal(await peek('parse'), 'parse(text)\nGibt den Baum zum Ausdruck text zurück.\naus parser.py', 'parse: signature, docstring without its example, origin')
+    assert.equal(await peek('ist_liste'), 'ist_liste(wert)\naus parser.py', 'ist_liste: no docstring')
+    const own = await peek('auswerten')
+    assert.ok(own.startsWith('def auswerten(baum):') && own.includes('return operator_anwenden'), `auswerten: its definition (${own})`)
     await context.close()
   })
 
