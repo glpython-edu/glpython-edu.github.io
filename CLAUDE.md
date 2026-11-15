@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Visible changes and screen space (read on every task)
+
+**Visible changes: only what the prompt asks for.** Everything learners or teachers see or experience – layout, text and labels, markers, colours, icons, new elements, where something appears, motion and scrolling – changes only as far as the prompt asks for it.
+
+**Screen space is the scarcest resource** (iPads, projector at font size 1.5). Never add a row, bar, badge, banner, margin or other element that takes space – not even for development aids – unless the prompt asks for exactly that. Anything that must be shown goes into a row that exists anyway, or it isn't shown. If a visible addition or an extension looks useful (e.g. showing something in more places than asked, a new label, an extra element, a different wording), **don't build it: propose it in the report and wait for the instructor's decision.** Where a prompt leaves a visible choice to you («your choice»), the choice covers only the item named there, in the place named there. When in doubt whether something is visible, treat it as visible and ask.
+
 ## What this is
 
 The glpython IDE: a browser Python IDE for the classroom, deployed to GitHub Pages at the organization's root, https://glpython-edu.github.io/. The repo is `glpython-edu/glpython-edu.github.io` (that name is what makes it the root site); its local clone is `../glpython`. It is only the **shell**: the top bar (with the workspace's buttons portaled in), the files drawer and the ⋮ menu (README «Layout»), Microsoft sign-in (MSAL redirect flow) and project persistence (local storage, folder/ZIP import, ZIP export, share links). Everything inside the workspace is the `<GlPythonWorkspace>` component from **glpython-editor** (`../glpython-editor`): the Monaco editor, the Pyodide worker, the REPL, the visualizer, the turtle panel. Changes to those belong there, not here.
