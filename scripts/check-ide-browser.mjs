@@ -47,6 +47,9 @@ const library = 'def gross(text):\n    return text.upper()\n'
 // check lets it go (slowTask): with a fixed delay (3 s) the file came before
 // the check had looked when opening the IDE took longer (P58).
 let aufgabe
+// The Etappe 4 scaffold's shape (P61): a parser by URL, the evaluator's
+// functions calling each other, so that call boxes open inside call boxes.
+const parser = 'def ist_liste(wert):\n    return isinstance(wert, list)\n\n\ndef parse(text):\n    """Gibt den Baum zum Ausdruck text zurück.\n\n    >>> parse("2 + 3")\n    [\'+\', 2, 3]\n    """\n    teile = text.split()\n    if len(teile) == 1:\n        return int(teile[0])\n    return [teile[1], int(teile[0]), int(teile[2])]\n'
 let slowTask = Promise.resolve()
 let releaseSlowTask = () => {}
 const holdSlowTask = () => { slowTask = new Promise((resolve) => { releaseSlowTask = resolve }) }
@@ -56,6 +59,9 @@ const libraryServer = http.createServer((request, response) => {
   if (pathname === '/bib.py') {
     response.writeHead(200, headers)
     response.end(library)
+  } else if (pathname === '/parser.py') {
+    response.writeHead(200, headers)
+    response.end(parser)
   } else if (pathname === '/aufgabe.md' || pathname === '/langsam/aufgabe.md') {
     void (pathname === '/aufgabe.md' ? Promise.resolve() : slowTask).then(() => {
       response.writeHead(200, headers)
@@ -102,6 +108,8 @@ aufgabe = '# Aufgabe 1\n\nErgänzen Sie `auswerten` in **auswerter.py**.\n\n- Ta
 const task = (instructions = aufgabe) => link([file('auswerter.py', auswerter), { path: 'bib.py', url: `${libraryBase}bib.py`, readOnly: true }, { path: 'aufgabe.md', label: 'aufgabe', kind: 'text', code: instructions, readOnly: true }], 'auswerter.py', 2, { openFile: 'aufgabe.md' })
 // The same with aufgabe.md by URL, first in the link, as a course writes it.
 const taskByUrl = (url) => link([{ path: 'aufgabe.md', url, readOnly: true }, { path: 'bib.py', url: `${libraryBase}bib.py`, readOnly: true }, file('auswerter.py', auswerter)], 'auswerter.py', 2, { openFile: 'aufgabe.md' })
+const evaluator = 'from parser import parse, ist_liste\n\n\ndef ist_ausgewertet(baum):\n    if ist_liste(baum):\n        return False\n    else:\n        return True\n\n\ndef operator_anwenden(op, x, y):\n    if op == "+":\n        return x + y\n\n\ndef auswerten(baum):\n    if ist_ausgewertet(baum):\n        return baum\n    return operator_anwenden(baum[0], baum[1], baum[2])\n\n\ndef berechnen(text):\n    return auswerten(parse(text))\n'
+const scaffold = (code = evaluator) => link([file('auswerter.py', code), { path: 'parser.py', url: `${libraryBase}parser.py`, readOnly: true }], 'auswerter.py', 2)
 const hostile = '# Test\n\n<script>window.hacked = 1</script>\n\n<img src="x" onerror="window.hacked = 2">\n\n[Klick](javascript:window.hacked=3)\n\n<a href="#" onclick="window.hacked = 4">a</a>\n'
 const withReadOnly = link([file('bib.py', library, { readOnly: true }), file('main.py', 'from bib import gross\nprint(gross("hallo"))\n')], 'main.py')
 const byUrl = (url) => link([{ path: 'bib.py', url, readOnly: true }, file('main.py', 'from bib import gross\nprint(gross("hallo"))\n')], 'main.py', 2)
@@ -372,6 +380,115 @@ try {
   })
 
   const markdownSwitch = (page) => page.locator('.markdown-switch button[aria-pressed="true"]').innerText()
+  // P61 A: a visualized REPL input starts with the session's globals in the
+  // footer - the file's functions, the names imported from the library, an
+  // earlier input's variable - and a name the input assigns appears.
+  await check('a REPL input visualized: the footer starts with the session\'s globals', async () => {
+    const context = await newContext()
+    const page = await open(context, scaffold())
+    const names = () => page.locator('.visualizer-globals-list .locals-row').evaluateAll((rows) => rows.map((row) => row.dataset.name))
+    const visualizeEntry = async (input) => {
+      await enterRepl(page, input)
+      const entry = page.locator('.repl-entry').last()
+      await entry.locator('.repl-entry-visualize:not([disabled])').waitFor({ timeout: 30000 })
+      await entry.locator('.repl-entry-visualize').click()
+      await page.locator('.visualizer-step-count', { hasText: 'Vor der' }).waitFor({ timeout: 60000 })
+    }
+    const leave = () => page.getByRole('button', { name: 'Visualisierung beenden' }).click()
+    const session = ['parse', 'ist_liste', 'ist_ausgewertet', 'operator_anwenden', 'auswerten', 'berechnen']
+    await pythonReady(page)
+    await page.getByRole('button', { name: 'Ausführen' }).click()
+    await page.locator('.console').getByText('(Keine Ausgabe)').waitFor({ timeout: 60000 })
+    await visualizeEntry('berechnen("2 + 3")')
+    assert.deepEqual(await names(), session, 'before step 1')
+    await page.getByRole('button', { name: 'Nächster Schritt' }).click()
+    assert.equal(await page.locator('.visualizer-step-count').innerText().then((text) => text.split(' von ')[0]), 'Schritt 1', 'step 1 is the input\'s first step')
+    assert.deepEqual(await names(), session, 'step 1')
+    await leave()
+    await enterRepl(page, 'x = 3')
+    await visualizeEntry('berechnen("2 + 3")')
+    assert.deepEqual(await names(), [...session, 'x'], 'an earlier input\'s x')
+    await leave()
+    await visualizeEntry('y = berechnen("2 + 3")')
+    assert.deepEqual(await names(), [...session, 'x'], 'before the input ran')
+    await page.getByRole('button', { name: 'Letzter Schritt' }).click()
+    assert.deepEqual(await names(), [...session, 'x', 'y'], 'at the end')
+    await context.close()
+  })
+
+  // P62/P63: the functions imported from the library read «Funktion» in the
+  // footer, like the file's own - no file name there - and their box shows what they do - signature, docstring
+  // without its examples, where they come from - not their body; the file's
+  // own functions show their whole definition, as before.
+  await check('imported functions in the footer: what they do, not how', async () => {
+    const context = await newContext()
+    const page = await open(context, scaffold(`${evaluator}\n\nberechnen("2 + 3")\n`))
+    // The library's tab stays as it was.
+    assert.ok((await tabs(page)).some((tab) => tab.includes('parser.py')), `the parser.py tab: ${await tabs(page)}`)
+    await pythonReady(page)
+    await page.getByRole('button', { name: 'Visualisieren' }).click()
+    await page.locator('.visualizer-step-count', { hasText: 'Vor der' }).waitFor({ timeout: 60000 })
+    await page.getByRole('button', { name: 'Letzter Schritt' }).click()
+    const entries = await page.locator('.visualizer-globals-list .locals-row').evaluateAll((rows) => rows.map((row) => row.innerText.replace(/\s+/g, ' ').trim()))
+    assert.deepEqual(entries.slice(0, 2), ['parse Funktion', 'ist_liste Funktion'], 'the imported names: no file name')
+    assert.ok(entries.every((entry) => !entry.includes('parser.py')), `no file name in the footer: ${entries}`)
+    assert.equal(entries[4], 'auswerten Funktion', 'a function of the file')
+    const peek = async (name) => {
+      await page.mouse.move(0, 0)
+      await page.locator('.visualizer-globals-peek').waitFor({ state: 'detached', timeout: 5000 })
+      await page.locator(`.visualizer-globals .locals-row[data-name="${name}"]`).hover()
+      return (await page.locator('.visualizer-globals-peek').innerText()).replace(/\n+/g, '\n').trim()
+    }
+    assert.equal(await peek('parse'), 'parse(text)\nGibt den Baum zum Ausdruck text zurück.\naus parser.py', 'parse: signature, docstring without its example, origin')
+    assert.equal(await peek('ist_liste'), 'ist_liste(wert)\naus parser.py', 'ist_liste: no docstring')
+    const own = await peek('auswerten')
+    assert.ok(own.startsWith('def auswerten(baum):') && own.includes('return operator_anwenden'), `auswerten: its definition (${own})`)
+    await context.close()
+  })
+
+  // P61 B: in the IDE a step that opens a call box scrolls it into view
+  // whole, with the boxes around it as far as they fit: here, in «Kasten» at
+  // the check's window size, every open box, down to its variable row.
+  await check('a new call box: scrolled into view whole, with the boxes around it', async () => {
+    const context = await newContext()
+    const page = await open(context, scaffold(`${evaluator}\n\nberechnen("2 + 3")\n`))
+    await pythonReady(page)
+    await page.getByRole('button', { name: 'Visualisieren' }).click()
+    await page.locator('.visualizer-step-count', { hasText: 'Vor der' }).waitFor({ timeout: 60000 })
+    await page.locator('.visualizer-mode button', { hasText: 'Kasten' }).click()
+    const next = page.getByRole('button', { name: 'Nächster Schritt' })
+    let shown = []
+    let opened = 0
+    while (await next.isEnabled()) {
+      await next.click()
+      // Until the smooth scroll has ended: it starts in a frame or two, then
+      // the view stands still for one poll.
+      await page.evaluate(() => { delete document.querySelector('.visualizer-view').dataset.lastScroll })
+      await page.waitForTimeout(100)
+      await page.waitForFunction(() => {
+        const view = document.querySelector('.visualizer-view')
+        const last = view.dataset.lastScroll
+        view.dataset.lastScroll = String(view.scrollTop)
+        return last === String(view.scrollTop)
+      }, null, { polling: 150, timeout: 5000 })
+      const boxes = await page.evaluate(() => {
+        const view = document.querySelector('.visualizer-view').getBoundingClientRect()
+        return [...document.querySelectorAll('.visualizer-view .frame-box--root .frame-box')].map((box) => {
+          const rect = box.getBoundingClientRect()
+          return { id: box.dataset.frameId, whole: rect.top >= view.top - 1 && rect.bottom <= view.bottom + 1, fits: rect.height + 24 <= view.height }
+        })
+      })
+      if (boxes.some((box) => !shown.includes(box.id))) {
+        opened += 1
+        const step = await page.locator('.visualizer-step-count').innerText()
+        assert.ok(boxes.every((box) => box.whole || !box.fits), `${step}: every box that fits whole in view (${JSON.stringify(boxes)})`)
+      }
+      shown = boxes.map((box) => box.id)
+    }
+    assert.ok(opened >= 4, `call boxes opened: ${opened}`)
+    await context.close()
+  })
+
   await check('a task: opens on aufgabe.md as a page; ▶, Tests, Visualisieren run auswerter.py', async () => {
     const context = await newContext()
     const page = await open(context, task())
