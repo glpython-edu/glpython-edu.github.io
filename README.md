@@ -155,7 +155,8 @@ vocabulary of the embed's `features=`: `run` (▶), `tests`, `visualize`, `repl`
 (the console's `>>>` input line; the console stays, and `input()` still asks
 there), `export` (the visualizer's «→-Kette kopieren»), `coverage` (after
 Tests, the lines no example ran), `listtree` (lists as trees) and `tree` (the
-visualizer's mode «Baum»). Other names (`ide`, `reset`, unknown ones) are
+visualizer's option «Ausdrücke als Bäume auswerten»; before glpython-editor's
+P65 its mode «Baum»). Other names (`ide`, `reset`, unknown ones) are
 ignored. It goes into the payload as `"features": ["run", "repl", …]` (in
 either encoding), or as `?features=run,repl` on a link without a project. It
 is the tab's starting state, not a lock: ⋮ **Optionen** has a switch for each

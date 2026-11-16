@@ -660,7 +660,7 @@ try {
     assert.equal(await replLine(page), 0, 'still no REPL line')
     // ⋮ Optionen: the REPL line back on.
     const dialog = await options(page)
-    assert.deepEqual(await dialog.locator('label').evaluateAll((labels) => labels.map((label) => [label.textContent.trim(), label.querySelector('input').checked])), [['▶ Ausführen', true], ['Tests', true], ['Visualisieren', true], ['Eingabezeile in der Konsole (>>>)', false], ['→-Kette kopieren (im Visualisierer)', false], ['Zeilen, die von keinem Test ausgeführt wurden', false], ['Listen als Baum', false], ['Visualisierer-Modus «Baum»', false]])
+    assert.deepEqual(await dialog.locator('label').evaluateAll((labels) => labels.map((label) => [label.textContent.trim(), label.querySelector('input').checked])), [['▶ Ausführen', true], ['Tests', true], ['Visualisieren', true], ['Eingabezeile in der Konsole (>>>)', false], ['→-Kette kopieren (im Visualisierer)', false], ['Zeilen, die von keinem Test ausgeführt wurden', false], ['Listen als Baum', false], ['Ausdrücke als Bäume auswerten', false]])
     await dialog.getByLabel('Eingabezeile in der Konsole (>>>)').check()
     await page.keyboard.press('Escape')
     assert.equal(await replLine(page), 1, 'the REPL line is back')
@@ -673,7 +673,9 @@ try {
     await context.close()
   })
 
-  await check('settings: listtree and tree - «Baum» in the visualizer, trees in the console', async () => {
+  // P65: "tree" is the visualizer's option «Ausdrücke als Bäume auswerten»
+  // in «⋯ Optionen», next to the two modes «Kasten | Ersetzung».
+  await check('settings: listtree and tree - the trees option in the visualizer, trees in the console', async () => {
     const context = await newContext()
     const page = await open(context, compactLink(settingsPayload(['run', 'repl', 'visualize', 'listtree', 'tree'], [file('main.py', 'baum = ["+", 2, ["*", 3, 4]]\nx = 2 + 3 * 4\n')])))
     assert.deepEqual(await barButtons(page), ['Ausführen', 'Visualisieren'])
@@ -684,8 +686,23 @@ try {
     await page.locator('.repl-entry-tree').first().waitFor({ timeout: 30000 })
     await page.locator('.ide-actions').getByRole('button', { name: 'Visualisieren' }).click()
     await page.locator('.visualizer-mode').waitFor({ timeout: 60000 })
-    assert.deepEqual(await page.locator('.visualizer-mode button').allInnerTexts(), ['Kasten', 'Ersetzung', 'Baum'])
-    await page.locator('.visualizer-mode button', { hasText: 'Baum' }).click()
+    assert.deepEqual(await page.locator('.visualizer-mode button').allInnerTexts(), ['Kasten', 'Ersetzung'])
+    await page.locator('.visualizer-options-button').click()
+    const option = page.getByRole('menuitemcheckbox', { name: 'Ausdrücke als Bäume auswerten' })
+    assert.equal(await option.getAttribute('aria-checked'), 'false', 'the option, off at first')
+    await option.click()
+    assert.equal(await option.getAttribute('aria-checked'), 'true', 'switched on')
+    await option.press('Escape')
+    // x = 2 + 3 * 4 as a tree, in «Ersetzung» and in «Kasten».
+    for (const mode of ['Ersetzung', 'Kasten']) {
+      await page.locator('.visualizer-mode button', { hasText: mode }).click()
+      const first = page.getByRole('button', { name: 'Erster Schritt' })
+      if (await first.isEnabled()) await first.click()
+      const tree = page.locator('.visualizer-canvas .value-tree-scroll')
+      const next = page.getByRole('button', { name: 'Nächster Schritt' })
+      for (let index = 0; index < 10 && await tree.count() === 0 && await next.isEnabled(); index++) await next.click()
+      assert.ok(await tree.count() > 0, `a tree in «${mode}»`)
+    }
     await page.getByRole('button', { name: 'Letzter Schritt' }).click()
     // A global variable's tree is in its box, on hover over its entry in the
     // visualizer's footer (glpython-editor v0.1.34, P53).
