@@ -21,6 +21,8 @@
 //   line, but input() asks; ⋮ «Optionen» switches it back, a reload and
 //   «Teilen» keep the tab's settings; `listtree` and `tree`; ▶ without Tests
 //   and Tests without ▶; a link without settings as before.
+// - with trees (P74): a tree that opens in a box scrolls into view like a
+//   new box, in «Kasten» and «Ersetzung».
 // The browser's «leave the page» question and the iPad cases stay manual:
 // headless Chrome can't confirm them.
 //
@@ -148,8 +150,8 @@ const serveCdnFromMemory = (context) => context.route('https://cdn.jsdelivr.net/
   const headers = Object.fromEntries(Object.entries(file.headers).filter(([name]) => name !== 'content-encoding' && name !== 'content-length'))
   await route.fulfill({ status: file.status, headers, body: file.body })
 })
-const newContext = async () => {
-  const context = await browser.newContext({ viewport: { width: 1200, height: 800 }, locale: 'de-CH', permissions: ['clipboard-read', 'clipboard-write'] })
+const newContext = async (viewport = { width: 1200, height: 800 }) => {
+  const context = await browser.newContext({ viewport, locale: 'de-CH', permissions: ['clipboard-read', 'clipboard-write'] })
   await serveCdnFromMemory(context)
   // The «leave the page» question (unsaved changes) and the copy-by-hand
   // prompt: accepted.
@@ -486,6 +488,66 @@ try {
       shown = boxes.map((box) => box.id)
     }
     assert.ok(opened >= 4, `call boxes opened: ${opened}`)
+    await context.close()
+  })
+
+  // P74 (P64 again): with «Ausdrücke als Bäume auswerten», a tree that opens
+  // in a box grows it and the boxes around it, like a box that opens: that
+  // step scrolls the same way (P61 B), in «Kasten» and in «Ersetzung». Here
+  // `ist_ausgewertet(baum)` opens as a tree in the `auswerten` box, and
+  // before the fix its variable row stayed below the view. In a Mac's
+  // fullscreen window, where the `berechnen` box just fits: the tree around
+  // it (the call's statement) grows a frame after the box, and before that
+  // the view can't scroll so far.
+  await check('a tree that opens in a box: scrolled into view as a new box is, with trees in both modes', async () => {
+    const context = await newContext({ width: 1440, height: 900 })
+    const page = await open(context, link([file('auswerter.py', `${evaluator}\n\nberechnen("2 + 3")\n`), { path: 'parser.py', url: `${libraryBase}parser.py`, readOnly: true }], 'auswerter.py', 2, { features: ['run', 'tests', 'visualize', 'repl', 'tree'] }))
+    await pythonReady(page)
+    for (const mode of ['Kasten', 'Ersetzung']) {
+      await page.getByRole('button', { name: 'Visualisieren' }).click()
+      await page.locator('.visualizer-step-count', { hasText: 'Vor der' }).waitFor({ timeout: 60000 })
+      await page.locator('.visualizer-options-button').click()
+      const option = page.getByRole('menuitemcheckbox', { name: 'Ausdrücke als Bäume auswerten' })
+      if (await option.getAttribute('aria-checked') !== 'true') await option.click()
+      await page.keyboard.press('Escape')
+      await page.locator('.visualizer-mode button', { hasText: mode }).click()
+      const next = page.getByRole('button', { name: 'Nächster Schritt' })
+      let shown = []
+      let treesInBoxes = 0
+      while (await next.isEnabled()) {
+        await next.click()
+        await page.evaluate(() => { delete document.querySelector('.visualizer-view').dataset.lastScroll })
+        await page.waitForTimeout(100)
+        await page.waitForFunction(() => {
+          const view = document.querySelector('.visualizer-view')
+          const last = view.dataset.lastScroll
+          view.dataset.lastScroll = String(view.scrollTop)
+          return last === String(view.scrollTop)
+        }, null, { polling: 150, timeout: 5000 })
+        // The open boxes and trees: a tree by the box it opened in and its
+        // text's start (each tree in a box is a statement of its own).
+        const parts = await page.evaluate(() => {
+          const view = document.querySelector('.visualizer-view').getBoundingClientRect()
+          return [...document.querySelectorAll('.visualizer-view .frame-box--root .frame-box, .visualizer-view .frame-box--root .frame-tree')].map((element) => {
+            const rect = element.getBoundingClientRect()
+            const tree = element.classList.contains('frame-tree')
+            const box = tree ? element.parentElement.closest('.frame-box:not(.frame-box--root)') : element
+            return { id: tree ? `tree in ${box?.dataset.frameId ?? 'module'}: ${element.dataset.treeId}` : `box ${element.dataset.frameId}`, tree, inBox: Boolean(box), whole: rect.top >= view.top - 1 && rect.bottom <= view.bottom + 1, fits: rect.height + 24 <= view.height }
+          })
+        })
+        const opened = parts.filter((part) => part.tree && part.inBox && !shown.includes(part.id))
+        if (opened.length > 0) {
+          treesInBoxes += 1
+          const step = await page.locator('.visualizer-step-count').innerText()
+          // The boxes around it (every box is around it: the open boxes form one chain)
+          // and the tree: the outermost that fits is whole, so all that fit are.
+          assert.ok(parts.every((part) => part.whole || !part.fits || (part.tree && !opened.includes(part))), `${mode}, ${step}: a tree opened, every box that fits whole in view (${JSON.stringify(parts)})`)
+        }
+        shown = parts.map((part) => part.id)
+      }
+      assert.ok(treesInBoxes >= 3, `${mode}: trees opened in boxes: ${treesInBoxes}`)
+      await page.getByRole('button', { name: 'Visualisierung beenden' }).click()
+    }
     await context.close()
   })
 
